@@ -3,15 +3,18 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from scipy.interpolate import splrep, splev
 import argparse
+import csv
 
 parser = argparse.ArgumentParser()
 # 1 is x, 2 is y, 3 is z, -1 is -x, -2 is -y, -3 is -z.
 parser.add_argument("--chordIndex", type=int, default=1)
 parser.add_argument("--liftIndex", type=int, default=2)
 parser.add_argument("--spanIndex", type=int, default=3)
-parser.add_argument("--sliceFile", type=str, default="input_files/slices.dat")
+parser.add_argument("--sliceFile", type=str, default="/home/lucaeros/Documents/RESULTS/OPTIM/new/tc/")
 parser.add_argument("--plotly", type=bool, default=True)
 args = parser.parse_args()
+if args.plotly:
+    import plotly.graph_objects as go
 
 
 def readSlices(filename, nmax=-1):
@@ -58,8 +61,16 @@ def readSlices(filename, nmax=-1):
         slice_header = lines[slice_begin].replace('"', "").replace("(", "").replace(")", "").replace(",", "").split()
         try:
             # if slice is arbitrary, gets the normal
-            normal = [float(slice_header[-3]), float(slice_header[-2]), float(slice_header[-1])]
-            point = [float(slice_header[-8]), float(slice_header[-7]), float(slice_header[-6])]
+            normal = [
+                float(slice_header[-3]),
+                float(slice_header[-2]),
+                float(slice_header[-1]),
+            ]
+            point = [
+                float(slice_header[-8]),
+                float(slice_header[-7]),
+                float(slice_header[-6]),
+            ]
         except Exception:
             # if slice is not arbitrary, normal of slice is spanwise axis
             normal = [0, 0, 0]
@@ -135,7 +146,7 @@ class Airfoil:
         minimum angle between neighboor egdes above which a TE is detected
     """
 
-    def __init__(self, name, data, conn, normal, point, min_te_angle=40):
+    def __init__(self, name, data, conn, normal, point, min_te_angle=20):
         self.name = name
         self.data = data
         self.conn = conn
@@ -475,6 +486,7 @@ class Airfoil:
                 self.lower_te_ind = node0
                 self.upper_te_ind = node1
         else:
+            self.plotAirfoil()
             print("WARNING, there are more than 2 sharp corners on slice")
         self.upperTE = self.coords[self.upper_te_ind, :]
         self.lowerTE = self.coords[self.lower_te_ind, :]
@@ -548,16 +560,23 @@ class Airfoil:
         # construct spline for all data
         tcks = {}
         for k, v in self.order_data.items():
-            tcks[k] = splrep(t, np.concatenate((self.order_data[k][-n_neigh:], self.order_data[k][: n_neigh + 1])))
+            tcks[k] = splrep(
+                t,
+                np.concatenate((self.order_data[k][-n_neigh:], self.order_data[k][: n_neigh + 1])),
+            )
 
         def min_dist_from_te(t):
             vec = np.array(
-                [splev(t, tcks["x"]) - self.te[0], splev(t, tcks["y"]) - self.te[1], splev(t, tcks["z"]) - self.te[2]]
+                [
+                    splev(t, tcks["x"]) - self.te[0],
+                    splev(t, tcks["y"]) - self.te[1],
+                    splev(t, tcks["z"]) - self.te[2],
+                ]
             )
             return -np.linalg.norm(vec)
 
         # can be improved by providing analytic or CS derivatives
-        opt_res = minimize(min_dist_from_te, [0], bounds=[[0, 1]], options={"disp": False}, tol=1e-10)
+        opt_res = minimize(min_dist_from_te, [0.5], bounds=[[0, 1]], options={"disp": False}, tol=1e-10)
 
         if not opt_res["success"]:
             print("WARNING, Optimization failed to find the max distance pt")
@@ -565,9 +584,30 @@ class Airfoil:
         t_opt = opt_res["x"]
 
         # overwrite the current LE coordinates with the new result
+        order_coords = np.zeros((len(self.order_data["x"]), 3))
         for k, v in self.order_data.items():
             self.order_data[k][0] = splev(t_opt, tcks[k])
         self.accurate_le = np.array([self.order_data["x"][0], self.order_data["y"][0], self.order_data["z"][0]])
+        order_coords[:, 0] = self.order_data["x"][:]
+        order_coords[:, 1] = self.order_data["y"][:]
+        order_coords[:, 2] = self.order_data["z"][:]
+        self.order_coords = order_coords
+
+    def get2dCoord(self):
+        axis = self.te - self.le
+        c = np.linalg.norm(axis)
+        axis /= c
+        tangent = np.cross(self.normal, axis)
+        tangent /= np.linalg.norm(tangent)
+        arrays = self.order_coords[:, :] - self.le
+        self.xr = np.dot(arrays, axis)
+        self.yr = np.dot(arrays, tangent)
+        self.xoc = self.xr / c
+        self.yoc = self.yr / c
+        self.cp = self.order_data["cp"][:]
+        self.xoc = np.append(self.xoc, self.xoc[0])
+        self.yoc = np.append(self.yoc, self.yoc[0])
+        self.cp = np.append(self.cp, self.cp[0])
 
     def getTwist(self):
         untwisted = np.array([0, 0, 0])
@@ -630,13 +670,21 @@ class Airfoil:
         if len(self.te) == 3:
             fig.add_trace(
                 go.Scatter3d(
-                    x=[self.te[0]], y=[self.te[1]], z=[self.te[2]], mode="markers", marker=dict(color="blue", size=6)
+                    x=[self.te[0]],
+                    y=[self.te[1]],
+                    z=[self.te[2]],
+                    mode="markers",
+                    marker=dict(color="blue", size=6),
                 )
             )
         if len(self.le) == 3:
             fig.add_trace(
                 go.Scatter3d(
-                    x=[self.le[0]], y=[self.le[1]], z=[self.le[2]], mode="markers", marker=dict(color="red", size=6)
+                    x=[self.le[0]],
+                    y=[self.le[1]],
+                    z=[self.le[2]],
+                    mode="markers",
+                    marker=dict(color="red", size=6),
                 )
             )
         fig.update_scenes(aspectmode="data")
@@ -651,8 +699,32 @@ class Wing:
         self.points = points
         self.airfoils = []
         for k in range(len(list_data)):
-            airfoil = Airfoil(str(k), list_data[k], list_conn[k], list_normal[k], list_points[k])
-            self.airfoils.append(airfoil)
+            try:
+                airfoil = Airfoil(
+                    str(k),
+                    list_data[k],
+                    list_conn[k],
+                    list_normal[k],
+                    list_points[k],
+                    min_te_angle=20,
+                )
+                self.airfoils.append(airfoil)
+                # airfoil.plotAirfoil()
+            except Exception:
+                pass
+            # airfoil.plotAirfoil()
+
+    def getCurvSpan(self, xFraction):
+        cpan = [0]
+        for k in range(1, len(self.airfoils)):
+            pair = self.airfoils[k - 1]
+            nair = self.airfoils[k]
+            vect = (nair.accurate_le * (1 - xFraction) + nair.te * xFraction) - (
+                pair.accurate_le * (1 - xFraction) + pair.te * xFraction
+            )
+            vect[args.chordIndex - 1] = 0
+            cpan.append(np.linalg.norm(vect) + cpan[-1])
+        self.cpan = cpan
 
     def getTwistDistribution(self):
         span, twist = [], []
@@ -672,18 +744,28 @@ class Wing:
         self.span = span
         self.chord = chord
 
-    def plotTwistDsitribution(self):
-        self.getTwistDistribution()
-        plt.plot(self.span, self.twist)
+    def plotTwistDistribution(self, list_wings, labels, opt):
+        i = 0
+        for w in list_wings:
+            w.getTwistDistribution()
+            w.getCurvSpan(0.7)
+            plt.plot(w.cpan, w.twist, opt[i], label=labels[i])
+            i += 1
+        plt.legend()
         plt.xlabel("Span (m)")
         plt.ylabel("Twist")
         plt.show()
 
-    def plotChordDsitribution(self):
-        wing.getChordDistribution()
-        plt.plot(self.span, self.chord)
+    def plotChordDistribution(self, list_wings, labels, opt):
+        i = 0
+        for w in list_wings:
+            w.getChordDistribution()
+            w.getCurvSpan(0.7)
+            plt.plot(w.cpan, w.chord, opt[i], label=labels[i])
+            i += 1
+        plt.legend()
         plt.xlabel("Span (m)")
-        plt.ylabel("Chord (m)")
+        plt.ylabel("Twist")
         plt.show()
 
     def plotWing(self):
@@ -718,27 +800,64 @@ class Wing:
             )
             fig.add_trace(
                 go.Scatter3d(
-                    x=[air.te[0]], y=[air.te[1]], z=[air.te[2]], mode="markers", marker=dict(color="blue", size=6)
+                    x=[air.te[0]],
+                    y=[air.te[1]],
+                    z=[air.te[2]],
+                    mode="markers",
+                    marker=dict(color="blue", size=6),
                 )
             )
             fig.add_trace(
                 go.Scatter3d(
-                    x=[air.le[0]], y=[air.le[1]], z=[air.le[2]], mode="markers", marker=dict(color="red", size=6)
+                    x=[air.le[0]],
+                    y=[air.le[1]],
+                    z=[air.le[2]],
+                    mode="markers",
+                    marker=dict(color="red", size=6),
                 )
             )
         fig.update_scenes(aspectmode="data")
         fig.show()
 
 
-slice_data, slice_conn, normals, points = readSlices(args.sliceFile)
-air = Airfoil("1", slice_data[0], slice_conn[0], normals[0], points[0])
-
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "smooth_mutli/fc0_038_slices.dat")
 wing = Wing(slice_data, slice_conn, normals, points)
-wing.plotTwistDsitribution()
-wing.plotChordDsitribution()
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "billowed_multi/fc0_045_slices.dat")
+wing2 = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "smooth_mutli/fc0_000_slices.dat")
+wing3 = Wing(slice_data, slice_conn, normals, points)
+# air = Airfoil("1", slice_data[0], slice_conn[0], normals[0], points[0])
+opt = ["c-", "b-", "k--"]
+wing2.plotTwistDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
+wing2.plotChordDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
+
+
+for k in range(len(wing.airfoils)):
+    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
+    air = wing.airfoils[k]
+    air2 = wing2.airfoils[k]
+    air.get2dCoord()
+    air2.get2dCoord()
+    ax1.plot(air.xoc, air.yoc)
+    ax1.plot(air2.xoc, air2.yoc)
+    ax2.plot(air.xoc, air.cp)
+    ax2.plot(air2.xoc, air2.cp)
+    ax1.axis("scaled")
+    asp = np.diff(ax2.get_xlim())[0] / np.diff(ax2.get_ylim())[0]
+    asp /= np.abs(np.diff(ax1.get_xlim())[0] / np.diff(ax1.get_ylim())[0])
+    ax2.set_aspect(asp)
+    ax1.spines[["right", "top"]].set_visible(False)
+    ax2.spines[["right", "top"]].set_visible(False)
+    # ax2.axis("scaled")
+    ax2.invert_yaxis()
+    plt.show()
+
+with open("laws.csv", "w", newline="") as csvfile:
+    writer = csv.writer(csvfile, delimiter=",")
+    writer.writerow(["Span", "Twist", "Chord"])
+    for k in range(len(wing.cpan)):
+        writer.writerow([wing.cpan[k], wing.twist[k], wing.chord[k]])
 
 if args.plotly:
-    import plotly.graph_objects as go
-
-    air.plotAirfoil()
     wing.plotWing()
+    wing2.plotWing()
