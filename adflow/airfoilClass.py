@@ -733,6 +733,7 @@ class Wing:
             span.append(air.accurate_le[args.spanIndex - 1])
             twist.append(air.twist)
         self.span = span
+        self.nspan = span / span[-1]
         self.twist = twist
 
     def getChordDistribution(self):
@@ -742,6 +743,7 @@ class Wing:
             span.append(air.accurate_le[args.spanIndex - 1])
             chord.append(air.chord)
         self.span = span
+        self.nspan = span / span[-1]
         self.chord = chord
 
     def plotTwistDistribution(self, list_wings, labels, opt):
@@ -827,9 +829,43 @@ wing2 = Wing(slice_data, slice_conn, normals, points)
 slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "smooth_mutli/fc0_000_slices.dat")
 wing3 = Wing(slice_data, slice_conn, normals, points)
 # air = Airfoil("1", slice_data[0], slice_conn[0], normals[0], points[0])
-opt = ["c-", "b-", "k--"]
-wing2.plotTwistDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
-wing2.plotChordDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
+# opt = ["c-", "b-", "k--"]
+# wing2.plotTwistDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
+# wing2.plotChordDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
+wing.getTwistDistribution()
+wing2.getTwistDistribution()
+wing3.getTwistDistribution()
+colors = plt.cm.viridis(np.linspace(0, 0.7, 2))
+i = 0
+plt.rcParams.update({"font.size": 40})
+fig, ax = plt.subplots(1, figsize=(16, 9))
+plt.plot(wing.nspan, wing.twist, label="smooth optimized", color=colors[0])
+plt.plot(wing2.nspan, wing2.twist, label="billowed optimized", color=colors[1])
+plt.plot(wing3.nspan, wing3.twist, "k--", label="baseline")
+plt.xlabel("Normalized span position")
+plt.ylabel("Twist ($\degree$)")
+plt.legend()
+plt.savefig("twist_mp_tc.pdf", bbox_inches="tight")
+# plt.ylim([-3, 1])
+# plt.title("Lift Constrained, Twist and Chord Optimization")
+
+plt.show()
+wing.getChordDistribution()
+wing2.getChordDistribution()
+wing3.getChordDistribution()
+plt.rcParams.update({"font.size": 40})
+fig, ax = plt.subplots(1, figsize=(16, 9))
+plt.plot(wing.nspan, wing.chord, label="smooth optimized", color=colors[0])
+plt.plot(wing2.nspan, wing2.chord, label="billowed optimized", color=colors[1])
+plt.plot(wing3.nspan, wing3.chord, "k--", label="baseline")
+plt.xlabel("Normalized span position")
+plt.ylabel("Chord (m)")
+plt.legend()
+plt.savefig("chord_mp_tc.pdf", bbox_inches="tight")
+# plt.ylim([-3, 1])
+# plt.title("Lift Constrained, Twist and Chord Optimization")
+
+plt.show()
 
 
 for k in range(len(wing.airfoils)):
