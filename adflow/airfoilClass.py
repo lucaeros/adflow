@@ -409,7 +409,7 @@ class Airfoil:
 
                 # only keep going if we had 2 matches; one is the current line, the other is the next one
                 # TODO check this, was a bug?
-                if len(matched_inds) == 2:
+                if len([matched_inds]) == 2:
                     # this is the index of the next line, but it needs to be flipped
                     new_line_ind = matched_inds[matched_inds != cur_line_ind][0]
 
@@ -426,7 +426,6 @@ class Airfoil:
 
                     # put it back
                     newConn[new_line_ind] = flipped_conn
-
                 else:
                     raise Exception(
                         "The distance between the end of the current line and beginning of the next line is larger than 1e-12. I also could not find any line that ends at the same location, so the curve might be open?"
@@ -709,9 +708,9 @@ class Wing:
                     min_te_angle=20,
                 )
                 self.airfoils.append(airfoil)
-                # airfoil.plotAirfoil()
             except Exception:
-                pass
+                print("airfoil " + str(k) + " not ok")
+            # airfoil.plotAirfoil()
             # airfoil.plotAirfoil()
 
     def getCurvSpan(self, xFraction):
@@ -824,7 +823,7 @@ class Wing:
 
 slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "fc0_121_slices.dat")
 wing2 = Wing(slice_data, slice_conn, normals, points)
-slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "paraglider_000_slices.dat")
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "../paraglider_000_slices.dat")
 wing = Wing(slice_data, slice_conn, normals, points)
 # wing.plotWing()
 """
@@ -868,13 +867,13 @@ plt.savefig("chord_mp_tc.pdf", bbox_inches="tight")
 plt.show()
 """
 print(len(wing.airfoils))
-index = [0, 10, 20, 25]
+index = [0, 10, 20, 30, 39]
 plt.rcParams.update({"font.size": 20})
 colors = plt.cm.viridis([0.6])
 fig, axes = plt.subplots(nrows=len(index), ncols=2, sharex=True, figsize=(16, 9), gridspec_kw={"width_ratios": [3, 1]})
 for k in range(len(index)):
     air = wing.airfoils[index[k]]
-    air2 = wing2.airfoils[index[k]]
+    air2 = wing.airfoils[index[k]]
     air.get2dCoord()
     air2.get2dCoord()
     print(air.point, air2.point)
