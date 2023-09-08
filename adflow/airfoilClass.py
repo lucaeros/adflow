@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--chordIndex", type=int, default=1)
 parser.add_argument("--liftIndex", type=int, default=2)
 parser.add_argument("--spanIndex", type=int, default=3)
-parser.add_argument("--sliceFile", type=str, default="/home/lucaeros/Documents/RESULTS/OPTIM/new/tc/")
+parser.add_argument("--sliceFile", type=str, default="/home/lucaeros/Documents/RESULTS/OPTIM/new/tcs/final/")
 parser.add_argument("--plotly", type=bool, default=True)
 args = parser.parse_args()
 if args.plotly:
@@ -822,12 +822,12 @@ class Wing:
         fig.show()
 
 
-slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "smooth_mutli/fc0_038_slices.dat")
-wing = Wing(slice_data, slice_conn, normals, points)
-slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "billowed_multi/fc0_045_slices.dat")
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "fc0_121_slices.dat")
 wing2 = Wing(slice_data, slice_conn, normals, points)
-slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "smooth_mutli/fc0_000_slices.dat")
-wing3 = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "paraglider_000_slices.dat")
+wing = Wing(slice_data, slice_conn, normals, points)
+# wing.plotWing()
+"""
 # air = Airfoil("1", slice_data[0], slice_conn[0], normals[0], points[0])
 # opt = ["c-", "b-", "k--"]
 # wing2.plotTwistDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
@@ -866,27 +866,48 @@ plt.savefig("chord_mp_tc.pdf", bbox_inches="tight")
 # plt.title("Lift Constrained, Twist and Chord Optimization")
 
 plt.show()
-
-
-for k in range(len(wing.airfoils)):
-    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
-    air = wing.airfoils[k]
-    air2 = wing2.airfoils[k]
+"""
+print(len(wing.airfoils))
+index = [0, 10, 20, 25]
+plt.rcParams.update({"font.size": 20})
+colors = plt.cm.viridis([0.6])
+fig, axes = plt.subplots(nrows=len(index), ncols=2, sharex=True, figsize=(16, 9), gridspec_kw={"width_ratios": [3, 1]})
+for k in range(len(index)):
+    air = wing.airfoils[index[k]]
+    air2 = wing2.airfoils[index[k]]
     air.get2dCoord()
     air2.get2dCoord()
-    ax1.plot(air.xoc, air.yoc)
-    ax1.plot(air2.xoc, air2.yoc)
-    ax2.plot(air.xoc, air.cp)
-    ax2.plot(air2.xoc, air2.cp)
-    ax1.axis("scaled")
-    asp = np.diff(ax2.get_xlim())[0] / np.diff(ax2.get_ylim())[0]
-    asp /= np.abs(np.diff(ax1.get_xlim())[0] / np.diff(ax1.get_ylim())[0])
-    ax2.set_aspect(asp)
-    ax1.spines[["right", "top"]].set_visible(False)
-    ax2.spines[["right", "top"]].set_visible(False)
+    print(air.point, air2.point)
+    if k == 0:
+        axes[k, 0].plot(air.xoc, air.yoc, "k-", label="baseline")
+        axes[k, 0].plot(air2.xoc, air2.yoc, color=colors[0], label="optimized")
+        axes[k, 1].plot(air.xoc, air.cp, "k-")
+        axes[k, 1].plot(air2.xoc, air2.cp, color=colors[0])
+    else:
+        axes[k, 0].plot(air.xoc, air.yoc, "k-")
+        axes[k, 0].plot(air2.xoc, air2.yoc, color=colors[0])
+        axes[k, 1].plot(air.xoc, air.cp, "k-")
+        axes[k, 1].plot(air2.xoc, air2.cp, color=colors[0])
+    axes[k, 0].set_aspect("equal")
+    axes[k, 0].set_yticks([-0.05, 0.05])
+    axes[k, 1].set_xticks([0, 0.5, 1])
+    # axes[k, 1].axis("scaled")
+    # asp = np.diff(axes[k, 1].get_xlim())[0] / np.diff(axes[k, 1].get_ylim())[0]
+    # asp /= np.abs(np.diff(axes[k, 0].get_xlim())[0] / np.diff(axes[k, 0].get_ylim())[0])
+    # print(asp)
+    # axes[k, 1].set_aspect(asp)
+    axes[k, 0].spines[["right", "top"]].set_visible(False)
+    axes[k, 1].spines[["right", "top"]].set_visible(False)
     # ax2.axis("scaled")
-    ax2.invert_yaxis()
-    plt.show()
+    axes[k, 1].invert_yaxis()
+    axes[k, 1].text(1.05, 0.5, "rib " + str(int(index[k])))
+axes[0, 0].set_title("$y/c$ vs. $x/c$")
+axes[0, 1].set_title("$Cp$ vs. $x/c$")
+fig.legend(ncol=2, bbox_to_anchor=(0.5, -0.05), loc="lower center")
+plt.subplots_adjust(hspace=0.2, wspace=0.2)
+# plt.tight_layout()
+plt.savefig("test.pdf", bbox_inches="tight")
+plt.show()
 
 with open("laws.csv", "w", newline="") as csvfile:
     writer = csv.writer(csvfile, delimiter=",")
