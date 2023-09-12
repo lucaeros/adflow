@@ -409,7 +409,7 @@ class Airfoil:
 
                 # only keep going if we had 2 matches; one is the current line, the other is the next one
                 # TODO check this, was a bug?
-                if len([matched_inds]) == 2:
+                if len(matched_inds) == 2:
                     # this is the index of the next line, but it needs to be flipped
                     new_line_ind = matched_inds[matched_inds != cur_line_ind][0]
 
@@ -705,7 +705,7 @@ class Wing:
                     list_conn[k],
                     list_normal[k],
                     list_points[k],
-                    min_te_angle=20,
+                    min_te_angle=10,
                 )
                 self.airfoils.append(airfoil)
             except Exception:
@@ -821,75 +821,91 @@ class Wing:
         fig.show()
 
 
-slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "fc0_121_slices.dat")
-wing2 = Wing(slice_data, slice_conn, normals, points)
-slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "../paraglider_000_slices.dat")
-wing = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "10/paraglider_000_slices.dat")
+opt_smooth = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "base_10/paraglider_000_slices.dat")
+base = Wing(slice_data, slice_conn, normals, points)
+
+slice_data, slice_conn, normals, points = readSlices(
+    "/home/lucaeros/Documents/RESULTS/OPTIM/new/tc/paraglider_000_slices.dat"
+)
+opt_billowed = Wing(slice_data, slice_conn, normals, points)
 # wing.plotWing()
-"""
+
 # air = Airfoil("1", slice_data[0], slice_conn[0], normals[0], points[0])
 # opt = ["c-", "b-", "k--"]
 # wing2.plotTwistDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
 # wing2.plotChordDistribution([wing, wing2, wing3], ["smooth", "billowed", "baseline"], opt)
-wing.getTwistDistribution()
-wing2.getTwistDistribution()
-wing3.getTwistDistribution()
-colors = plt.cm.viridis(np.linspace(0, 0.7, 2))
+base.getTwistDistribution()
+opt_smooth.getTwistDistribution()
+opt_billowed.getTwistDistribution()
+base.getChordDistribution()
+opt_smooth.getChordDistribution()
+opt_billowed.getChordDistribution()
+colors = plt.cm.viridis(np.linspace(0.0, 0.7, 2))
 i = 0
-plt.rcParams.update({"font.size": 40})
+plt.rcParams.update({"font.size": 37})
 fig, ax = plt.subplots(1, figsize=(16, 9))
-plt.plot(wing.nspan, wing.twist, label="smooth optimized", color=colors[0])
-plt.plot(wing2.nspan, wing2.twist, label="billowed optimized", color=colors[1])
-plt.plot(wing3.nspan, wing3.twist, "k--", label="baseline")
+plt.plot(opt_smooth.nspan, opt_smooth.twist, label="chord, twist, airfoil shape", color=colors[0])
+plt.plot(opt_billowed.nspan, opt_billowed.twist, "--", label="chord, twist", color=colors[1])
+plt.plot(base.nspan, base.twist, "k--", label="baseline")
 plt.xlabel("Normalized span position")
 plt.ylabel("Twist ($\degree$)")
 plt.legend()
-plt.savefig("twist_mp_tc.pdf", bbox_inches="tight")
+plt.savefig("twist_mp_tcs.pdf", bbox_inches="tight")
 # plt.ylim([-3, 1])
 # plt.title("Lift Constrained, Twist and Chord Optimization")
 
 plt.show()
-wing.getChordDistribution()
-wing2.getChordDistribution()
-wing3.getChordDistribution()
-plt.rcParams.update({"font.size": 40})
+plt.rcParams.update({"font.size": 37})
 fig, ax = plt.subplots(1, figsize=(16, 9))
-plt.plot(wing.nspan, wing.chord, label="smooth optimized", color=colors[0])
-plt.plot(wing2.nspan, wing2.chord, label="billowed optimized", color=colors[1])
-plt.plot(wing3.nspan, wing3.chord, "k--", label="baseline")
+plt.plot(opt_smooth.nspan, opt_smooth.chord, label="chord, twist, airfoil shape", color=colors[0])
+plt.plot(opt_billowed.nspan, opt_billowed.chord, "--", label="chord, twist", color=colors[1])
+plt.plot(base.nspan, base.chord, "k--", label="baseline")
 plt.xlabel("Normalized span position")
 plt.ylabel("Chord (m)")
 plt.legend()
-plt.savefig("chord_mp_tc.pdf", bbox_inches="tight")
+plt.savefig("chord_mp_tcs.pdf", bbox_inches="tight")
 # plt.ylim([-3, 1])
 # plt.title("Lift Constrained, Twist and Chord Optimization")
 
 plt.show()
 """
-print(len(wing.airfoils))
+
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "base_10/paraglider_000_slices.dat")
+base_10 = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "base_16/paraglider_000_slices.dat")
+base_16 = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "10/paraglider_000_slices.dat")
+opt_10 = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "16/paraglider_000_slices.dat")
+opt_16 = Wing(slice_data, slice_conn, normals, points)
+print(len(opt_10.airfoils))
 index = [0, 10, 20, 30, 39]
 plt.rcParams.update({"font.size": 20})
 colors = plt.cm.viridis([0.6])
-fig, axes = plt.subplots(nrows=len(index), ncols=2, sharex=True, figsize=(16, 9), gridspec_kw={"width_ratios": [3, 1]})
+fig, axes = plt.subplots(
+    nrows=len(index), ncols=3, sharex=True, figsize=(20, 18), gridspec_kw={"width_ratios": [3, 1, 1]}
+)
 for k in range(len(index)):
-    air = wing.airfoils[index[k]]
-    air2 = wing.airfoils[index[k]]
+    air = base_10.airfoils[index[k]]
+    air2 = opt_10.airfoils[index[k]]
+    air3 = base_16.airfoils[index[k]]
+    air4 = opt_16.airfoils[index[k]]
     air.get2dCoord()
     air2.get2dCoord()
-    print(air.point, air2.point)
+    air3.get2dCoord()
+    air4.get2dCoord()
     if k == 0:
         axes[k, 0].plot(air.xoc, air.yoc, "k-", label="baseline")
         axes[k, 0].plot(air2.xoc, air2.yoc, color=colors[0], label="optimized")
-        axes[k, 1].plot(air.xoc, air.cp, "k-")
-        axes[k, 1].plot(air2.xoc, air2.cp, color=colors[0])
     else:
         axes[k, 0].plot(air.xoc, air.yoc, "k-")
         axes[k, 0].plot(air2.xoc, air2.yoc, color=colors[0])
-        axes[k, 1].plot(air.xoc, air.cp, "k-")
-        axes[k, 1].plot(air2.xoc, air2.cp, color=colors[0])
-    axes[k, 0].set_aspect("equal")
-    axes[k, 0].set_yticks([-0.05, 0.05])
-    axes[k, 1].set_xticks([0, 0.5, 1])
+    axes[k, 1].plot(air.xoc, air.cp, "k-")
+    axes[k, 1].plot(air2.xoc, air2.cp, color=colors[0])
+    axes[k, 2].plot(air3.xoc, air3.cp, "k-")
+    axes[k, 2].plot(air4.xoc, air4.cp, color=colors[0])
     # axes[k, 1].axis("scaled")
     # asp = np.diff(axes[k, 1].get_xlim())[0] / np.diff(axes[k, 1].get_ylim())[0]
     # asp /= np.abs(np.diff(axes[k, 0].get_xlim())[0] / np.diff(axes[k, 0].get_ylim())[0])
@@ -897,13 +913,20 @@ for k in range(len(index)):
     # axes[k, 1].set_aspect(asp)
     axes[k, 0].spines[["right", "top"]].set_visible(False)
     axes[k, 1].spines[["right", "top"]].set_visible(False)
+    axes[k, 2].spines[["right", "top"]].set_visible(False)
     # ax2.axis("scaled")
     axes[k, 1].invert_yaxis()
-    axes[k, 1].text(1.05, 0.5, "rib " + str(int(index[k])))
+    axes[k, 2].invert_yaxis()
+    axes[k, 2].text(1.10, 0.3, "rib " + str(int(index[k] + 1)))
+    axes[k, 0].set_yticks([-0.05, 0.05])
+    axes[k, 1].set_xticks([0, 0.5, 1])
+    axes[k, 0].set_aspect("equal")
 axes[0, 0].set_title("$y/c$ vs. $x/c$")
-axes[0, 1].set_title("$Cp$ vs. $x/c$")
-fig.legend(ncol=2, bbox_to_anchor=(0.5, -0.05), loc="lower center")
-plt.subplots_adjust(hspace=0.2, wspace=0.2)
+axes[0, 1].set_title("$p_1$ : $C_L=0.69$", fontsize=18)
+axes[0, 2].set_title("$p_3$ : $C_L=0.27$", fontsize=18)
+fig.suptitle("$Cp$ vs. $x/c$", x=0.75, y=0.95)
+fig.legend(ncol=3, bbox_to_anchor=(0.5, 0.0), loc="lower center")
+plt.subplots_adjust(hspace=0.3)
 # plt.tight_layout()
 plt.savefig("test.pdf", bbox_inches="tight")
 plt.show()
@@ -917,3 +940,4 @@ with open("laws.csv", "w", newline="") as csvfile:
 if args.plotly:
     wing.plotWing()
     wing2.plotWing()
+"""
