@@ -821,6 +821,7 @@ class Wing:
         fig.show()
 
 
+"""
 slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "10/paraglider_000_slices.dat")
 opt_smooth = Wing(slice_data, slice_conn, normals, points)
 slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "base_10/paraglider_000_slices.dat")
@@ -880,6 +881,10 @@ slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "10/paragl
 opt_10 = Wing(slice_data, slice_conn, normals, points)
 slice_data, slice_conn, normals, points = readSlices(args.sliceFile + "16/paraglider_000_slices.dat")
 opt_16 = Wing(slice_data, slice_conn, normals, points)
+slice_data, slice_conn, normals, points = readSlices(
+    "/home/lucaeros/Documents/RESULTS/OPTIM/new/tcs_te/fc0_115_slices.dat"
+)
+new = Wing(slice_data, slice_conn, normals, points)
 print(len(opt_10.airfoils))
 index = [0, 10, 20, 30, 39]
 plt.rcParams.update({"font.size": 20})
@@ -892,16 +897,20 @@ for k in range(len(index)):
     air2 = opt_10.airfoils[index[k]]
     air3 = base_16.airfoils[index[k]]
     air4 = opt_16.airfoils[index[k]]
+    air5 = new.airfoils[index[k]]
     air.get2dCoord()
     air2.get2dCoord()
     air3.get2dCoord()
     air4.get2dCoord()
+    air5.get2dCoord()
     if k == 0:
         axes[k, 0].plot(air.xoc, air.yoc, "k-", label="baseline")
         axes[k, 0].plot(air2.xoc, air2.yoc, color=colors[0], label="optimized")
+        axes[k, 0].plot(air5.xoc, air5.yoc, "b--", label="optimized 2")
     else:
         axes[k, 0].plot(air.xoc, air.yoc, "k-")
         axes[k, 0].plot(air2.xoc, air2.yoc, color=colors[0])
+        axes[k, 0].plot(air5.xoc, air5.yoc, "b--")
     axes[k, 1].plot(air.xoc, air.cp, "k-")
     axes[k, 1].plot(air2.xoc, air2.cp, color=colors[0])
     axes[k, 2].plot(air3.xoc, air3.cp, "k-")
@@ -940,4 +949,3 @@ with open("laws.csv", "w", newline="") as csvfile:
 if args.plotly:
     wing.plotWing()
     wing2.plotWing()
-"""
